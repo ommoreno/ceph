@@ -294,6 +294,7 @@ public:
   public:
     rocksdb::WriteBatch bat;
     RocksDBStore *db;
+    string operation_seqs;
 
     explicit RocksDBTransactionImpl(RocksDBStore *_db);
   private:
@@ -307,6 +308,9 @@ public:
       const string &prefix,
       const string &k,
       const bufferlist &bl) override;
+    string get_operation_seqs() override;
+    void add_operations(char type, const string &key, uint32_t value_len);
+    void add_operations(char type, const string &start, const string &end);
     void set(
       const string &prefix,
       const char *k,

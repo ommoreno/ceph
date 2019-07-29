@@ -46,6 +46,10 @@ public:
 	set(prefix, it->first, it->second);
     }
 
+    virtual string get_operation_seqs() {
+      return NULL;
+    }
+
     /// Set Keys (via encoded ceph::buffer::list)
     void set(
       const std::string &prefix,      ///< [in] prefix, or CF name

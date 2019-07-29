@@ -17,6 +17,7 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>
+#include <fstream>
 
 #include <boost/container/flat_set.hpp>
 
@@ -10541,6 +10542,17 @@ void BlueStore::_kv_stop()
   dout(10) << __func__ << " stopped" << dendl;
 }
 
+static void print_operations(string operations, char file_num)
+{
+  string file_name = "/test/logger";
+  file_name.append(std::to_string(file_num));
+  std::ofstream myfile(file_name, ios::out|ios::binary);
+  if (myfile.is_open()) {
+    myfile.write(operations.c_str(), operations.length());
+    myfile.close();
+  }
+}
+
 void BlueStore::_kv_sync_thread()
 {
   dout(10) << __func__ << " start" << dendl;
@@ -10551,6 +10563,14 @@ void BlueStore::_kv_sync_thread()
   kv_cond.notify_all();
   while (true) {
     ceph_assert(kv_committing.empty());
+
+    if ( all_operations.length( )> 1024*1024*512) {
+      //print out and clear
+      print_operations(all_operations, file_num);
+      file_num++;
+      all_operations.clear();
+    }
+
     if (kv_queue.empty() &&
 	((deferred_done_queue.empty() && deferred_stable_queue.empty()) ||
 	 !deferred_aggressive)) {
@@ -10652,6 +10672,7 @@ void BlueStore::_kv_sync_thread()
       for (auto txc : kv_committing) {
 	if (txc->state == TransContext::STATE_KV_QUEUED) {
 	  txc->log_state_latency(logger, l_bluestore_state_kv_queued_lat);
+          all_operations.append(txc->t->get_operation_seqs());
 	  int r = cct->_conf->bluestore_debug_omit_kv_commit ? 0 : db->submit_transaction(txc->t);
 	  ceph_assert(r == 0);
 	  _txc_applied_kv(txc);
@@ -10699,6 +10720,8 @@ void BlueStore::_kv_sync_thread()
       }
 
       // submit synct synchronously (block and wait for it to commit)
+      all_operations.append(synct->get_operation_seqs());
+
       int r = cct->_conf->bluestore_debug_omit_kv_commit ? 0 : db->submit_transaction_sync(synct);
       ceph_assert(r == 0);
 
