@@ -869,7 +869,7 @@ void RocksDBStore::RocksDBTransactionImpl::add_operations(char type, const strin
 	  case 'X':
 		  break;
 	  default:
-		  assert(key[0] == 'S');
+		 // assert(key[0] == 'S');
 			 
   }
   operation_seqs.push_back(type);
